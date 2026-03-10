@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 📈 IDN-StockNews — Market Briefing
 
 An automated Indonesian stock market briefing system powered by **n8n**. Collects news from RSS feeds and financial APIs, processes and summarises them, then delivers structured briefings via Telegram.
@@ -99,3 +100,6 @@ python3 tests/integration/test_pipeline.py
 ## License
 
 MIT
+=======
+# IDN-StockNews
+>>>>>>> ca0f596efd8d9a8d8cec2e97108e7c72f465b9db
