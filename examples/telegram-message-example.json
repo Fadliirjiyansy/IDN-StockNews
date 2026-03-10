@@ -1,0 +1,9 @@
+{
+  "example": "telegram_message_payload",
+  "description": "Sample Telegram message payload sent by the briefing workflow",
+  "payload": {
+    "chat_id": "-100123456789",
+    "parse_mode": "Markdown",
+    "text": "📈 *IDN Market Briefing — Morning Edition*\n🕘 10 March 2026 | 09:05 WIB\n\n*IHSG:* 7,342.15 (+0.48%) 🟢\n*LQ45:* 1,023.88 (+0.31%) 🟢\n\n---\n*Top News:*\n1. Bank Indonesia holds rate at 5.75% — Kontan\n2. BBCA Q4 profit up 12% YoY — Bisnis.com\n3. Government raises coal royalty to 28% — Detik Finance\n\n---\n_Powered by IDN-StockNews_"
+  }
+}

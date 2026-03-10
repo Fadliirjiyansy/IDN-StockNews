@@ -1,0 +1,13 @@
+{
+  "example": "rss_item_payload",
+  "description": "Sample RSS item as parsed by n8n RSS Read node",
+  "item": {
+    "title": "BBCA Catat Laba Bersih Rp 48,6 Triliun Sepanjang 2025",
+    "link": "https://investasi.kontan.co.id/news/bbca-catat-laba-bersih",
+    "pubDate": "2026-03-10T07:30:00+07:00",
+    "content": "PT Bank Central Asia Tbk (BBCA) membukukan laba bersih sebesar Rp 48,6 triliun...",
+    "source": "kontan-market",
+    "ticker": "BBCA",
+    "category": "market"
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "id": "BZdFA5mQuB3EA1E1",
+  "name": "Market Briefing - Test Workflow",
+  "description": "A simple test workflow to validate the n8n setup is working correctly.",
+  "nodes": [
+    {
+      "id": "node-1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {}
+    },
+    {
+      "id": "node-2",
+      "name": "Set Test Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [460, 300],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "field-1", "name": "project", "value": "market-briefing", "type": "string" },
+            { "id": "field-2", "name": "status", "value": "testing", "type": "string" },
+            { "id": "field-3", "name": "timestamp", "value": "={{ $now.toISO() }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-3",
+      "name": "Check Status",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "testing",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node-4",
+      "name": "Success Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [900, 200],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "field-4", "name": "result", "value": "✅ Test passed! Workflow is running correctly.", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-5",
+      "name": "Fail Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [900, 420],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "field-5", "name": "result", "value": "❌ Test failed! Check workflow configuration.", "type": "string" }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": { "main": [[{ "node": "Set Test Data", "type": "main", "index": 0 }]] },
+    "Set Test Data": { "main": [[{ "node": "Check Status", "type": "main", "index": 0 }]] },
+    "Check Status": {
+      "main": [
+        [{ "node": "Success Result", "type": "main", "index": 0 }],
+        [{ "node": "Fail Result", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}

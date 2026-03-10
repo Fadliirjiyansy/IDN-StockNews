@@ -1,0 +1,23 @@
+name: 🚀 Feature Request
+description: Suggest a new workflow, data source, or integration
+labels: ["enhancement"]
+body:
+  - type: input
+    id: title
+    attributes:
+      label: Feature title
+      placeholder: e.g. Add IDX sector rotation workflow
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Why is this needed?
+      placeholder: Describe the problem this solves
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      placeholder: Describe how you'd like it to work

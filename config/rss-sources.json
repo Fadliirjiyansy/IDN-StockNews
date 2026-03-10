@@ -1,0 +1,47 @@
+{
+  "version": "1.0",
+  "description": "RSS feed registry for IDN Stock News market briefing",
+  "sources": [
+    {
+      "id": "kontan-market",
+      "name": "Kontan - Pasar Modal",
+      "url": "https://investasi.kontan.co.id/rss/berita/pasar-modal",
+      "category": "market",
+      "language": "id",
+      "active": true
+    },
+    {
+      "id": "bisnis-market",
+      "name": "Bisnis.com - Pasar Modal",
+      "url": "https://market.bisnis.com/rss",
+      "category": "market",
+      "language": "id",
+      "active": true
+    },
+    {
+      "id": "detik-finance",
+      "name": "Detik Finance",
+      "url": "https://finance.detik.com/rss",
+      "category": "economy",
+      "language": "id",
+      "active": true
+    },
+    {
+      "id": "idx-announcement",
+      "name": "IDX Official Announcements",
+      "url": "https://www.idx.co.id/rss",
+      "category": "exchange",
+      "language": "id",
+      "active": false,
+      "note": "Check availability — IDX RSS may require auth"
+    },
+    {
+      "id": "reuters-indonesia",
+      "name": "Reuters - Indonesia",
+      "url": "https://feeds.reuters.com/reuters/INbusinessNews",
+      "category": "global",
+      "language": "en",
+      "active": true
+    }
+  ]
+}

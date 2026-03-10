@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate Workflows & Config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate JSON files
+        run: |
+          echo "Validating JSON files..."
+          find . -name "*.json" ! -path "*/node_modules/*" ! -path "*/.git/*" | while read f; do
+            python3 -m json.tool "$f" > /dev/null && echo "✅ $f" || echo "❌ $f"
+          done
+
+      - name: Check .env.example exists
+        run: |
+          test -f config/.env.example && echo "✅ .env.example found" || (echo "❌ .env.example missing" && exit 1)
+
+      - name: Lint shell scripts
+        run: |
+          sudo apt-get install -y shellcheck
+          find scripts/ -name "*.sh" | xargs shellcheck --severity=warning || true

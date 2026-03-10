@@ -1,0 +1,17 @@
+# n8n data directory (contains DB, config, credentials)
+n8n_data/
+
+# Environment variables
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Node modules (if any scripts added later)
+node_modules/

@@ -1,0 +1,21 @@
+{
+  "description": "Sample RSS feed fixture for offline/unit testing",
+  "items": [
+    {
+      "title": "IHSG Dibuka Menguat 0,5% di Awal Sesi",
+      "link": "https://example.com/ihsg-menguat",
+      "pubDate": "2026-03-10T09:05:00+07:00",
+      "content": "Indeks Harga Saham Gabungan (IHSG) dibuka menguat 0,5% pada awal sesi perdagangan...",
+      "source": "kontan-market",
+      "category": "market"
+    },
+    {
+      "title": "Bank Indonesia Pertahankan Suku Bunga 5,75%",
+      "link": "https://example.com/bi-rate",
+      "pubDate": "2026-03-10T08:30:00+07:00",
+      "content": "Bank Indonesia mempertahankan suku bunga acuan BI Rate di level 5,75%...",
+      "source": "bisnis-market",
+      "category": "monetary"
+    }
+  ]
+}
