@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 📈 IDN-StockNews — Market Briefing
 
 An automated Indonesian stock market briefing system powered by **n8n**. Collects news from RSS feeds and financial APIs, processes and summarises them, then delivers structured briefings via Telegram.
@@ -11,8 +10,8 @@ An automated Indonesian stock market briefing system powered by **n8n**. Collect
 IDN-StockNews/
 ├── .github/                   GitHub Actions CI + issue templates
 ├── config/
-│   ├── .env.example           ← copy to .env and fill in values
-│   └── rss-sources.json       RSS feed registry
+│   ├── .env                   ← copy from .env.example and fill in values
+│   └── rss-sources.json       RSS feed registry (4 active sources)
 ├── docs/
 │   ├── architecture/          System design overview
 │   ├── workflows/             Per-workflow guides
@@ -20,7 +19,7 @@ IDN-StockNews/
 │   └── deployment/            VPS + production deployment guide
 ├── examples/                  Sample payloads (RSS items, Telegram messages)
 ├── infra/
-│   ├── docker/                docker-compose.yml
+│   ├── docker/                docker-compose.yml (n8n + PostgreSQL)
 │   ├── nginx/                 Reverse proxy config
 │   └── vps/                   VPS bootstrap script
 ├── n8n/
@@ -49,7 +48,7 @@ cp config/.env.example config/.env
 # Edit config/.env with your Telegram token, API keys, etc.
 ```
 
-### 2. Start n8n
+### 2. Start services (n8n + PostgreSQL)
 
 ```bash
 cd infra/docker
@@ -60,9 +59,15 @@ docker compose --env-file ../../config/.env up -d
 
 Open `http://localhost:5678` → **Workflows** → **Import** → upload files from `n8n/workflows/`
 
-### 4. Run the test
+### 4. Configure Telegram
 
-Open **Market Briefing - Test Workflow** and hit **Execute** — you should see `✅ Test passed!`
+1. Go to **Credentials** → **Add Credential** → **Telegram**
+2. Paste your Bot Token from @BotFather
+3. Open the **Send to Telegram** node and set your Chat ID
+
+### 5. Test the pipeline
+
+Open **Market Briefing - Full Pipeline** and click **Test workflow** — check your Telegram for the briefing!
 
 ---
 
@@ -70,9 +75,19 @@ Open **Market Briefing - Test Workflow** and hit **Execute** — you should see 
 
 | Workflow | File | Status |
 |----------|------|--------|
+| Full Pipeline | `n8n/workflows/market-briefing-pipeline.json` | ✅ Active |
 | Test Workflow | `n8n/workflows/test-workflow.json` | ✅ Ready |
-| RSS Fetcher | _coming soon_ | 🔧 Planned |
-| Telegram Sender | _coming soon_ | 🔧 Planned |
+
+---
+
+## ⏰ Schedule
+
+When activated, the pipeline runs automatically:
+
+| Time (WIB) | Edition |
+|------------|---------|
+| **08:55** | 🌅 Morning Edition (before market open) |
+| **16:05** | 🌆 Afternoon Edition (after market close) |
 
 ---
 
@@ -91,15 +106,12 @@ python3 tests/integration/test_pipeline.py
 ## 📚 Docs
 
 - [Architecture Overview](docs/architecture/overview.md)
+- [Pipeline Workflow Guide](docs/workflows/market-briefing-pipeline.md)
 - [Telegram Bot Setup](docs/api/telegram-setup.md)
 - [VPS Deployment](docs/deployment/vps-deployment.md)
-- [Test Workflow Guide](docs/workflows/test-workflow.md)
 
 ---
 
 ## License
 
 MIT
-=======
-# IDN-StockNews
->>>>>>> ca0f596efd8d9a8d8cec2e97108e7c72f465b9db
