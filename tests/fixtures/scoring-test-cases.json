@@ -1,0 +1,141 @@
+{
+  "description": "Test fixture data for scoring module — recency + ticker signals",
+  "referenceTime": "2026-03-16T15:00:00+07:00",
+  "cases": [
+    {
+      "id": 1,
+      "label": "Recent article with two tickers",
+      "article": {
+        "title": "BBCA dan BBRI naik setelah laporan laba kuat",
+        "content": "Saham BBCA dan BBRI mengalami kenaikan signifikan.",
+        "pubDate": "2026-03-16T14:00:00+07:00",
+        "source": "kontan-market"
+      },
+      "expected": {
+        "recencyScore": 26.73,
+        "tickerScore": 30,
+        "tickers": ["BBCA", "BBRI"]
+      }
+    },
+    {
+      "id": 2,
+      "label": "Old article, no tickers",
+      "article": {
+        "title": "Pasar saham menguat hari ini",
+        "content": "Indeks menguat tipis di sesi perdagangan.",
+        "pubDate": "2026-03-15T15:00:00+07:00",
+        "source": "bisnis-market"
+      },
+      "expected": {
+        "recencyScore": 1.88,
+        "tickerScore": 0,
+        "tickers": []
+      }
+    },
+    {
+      "id": 3,
+      "label": "Missing pubDate, single ticker",
+      "article": {
+        "title": "TLKM rilis laporan keuangan",
+        "content": null,
+        "pubDate": null,
+        "source": "detik-finance"
+      },
+      "expected": {
+        "recencyScore": 15,
+        "tickerScore": 15,
+        "tickers": ["TLKM"]
+      }
+    },
+    {
+      "id": 4,
+      "label": "Future pubDate",
+      "article": {
+        "title": "Market update terbaru",
+        "content": "Preview analisis pasar.",
+        "pubDate": "2026-03-16T17:00:00+07:00",
+        "source": "reuters-indonesia"
+      },
+      "expected": {
+        "recencyScore": 30,
+        "tickerScore": 0,
+        "tickers": []
+      }
+    },
+    {
+      "id": 5,
+      "label": "Three tickers — score capped at 35",
+      "article": {
+        "title": "BBCA BBRI TLKM rally kuat hari ini",
+        "content": null,
+        "pubDate": "2026-03-16T12:00:00+07:00",
+        "source": "kontan-market"
+      },
+      "expected": {
+        "recencyScore": 21.21,
+        "tickerScore": 35,
+        "tickers": ["BBCA", "BBRI", "TLKM"]
+      }
+    },
+    {
+      "id": 6,
+      "label": "Repeated ticker — deduplicated",
+      "article": {
+        "title": "BBCA naik tajam, saham BBCA diborong asing",
+        "content": "BBCA terus menguat di sesi kedua.",
+        "pubDate": "2026-03-16T14:00:00+07:00",
+        "source": "bisnis-market"
+      },
+      "expected": {
+        "recencyScore": 26.73,
+        "tickerScore": 15,
+        "tickers": ["BBCA"]
+      }
+    },
+    {
+      "id": 7,
+      "label": "Ticker embedded in word — no match",
+      "article": {
+        "title": "mBBCAx dan yBBRIz tidak terdeteksi",
+        "content": null,
+        "pubDate": "2026-03-16T14:00:00+07:00",
+        "source": "detik-finance"
+      },
+      "expected": {
+        "recencyScore": 26.73,
+        "tickerScore": 0,
+        "tickers": []
+      }
+    },
+    {
+      "id": 8,
+      "label": "Ticker in content only, null title handling",
+      "article": {
+        "title": "Laporan keuangan emiten",
+        "content": "Emiten GOTO rilis laporan kuartalan.",
+        "pubDate": "2026-03-16T14:00:00+07:00",
+        "source": "kontan-market"
+      },
+      "expected": {
+        "recencyScore": 26.73,
+        "tickerScore": 15,
+        "tickers": ["GOTO"]
+      }
+    },
+    {
+      "id": 9,
+      "label": "Mixed tier tickers",
+      "article": {
+        "title": "BBCA dan ADRO dan EXCL naik bersamaan",
+        "content": null,
+        "pubDate": "2026-03-16T12:00:00+07:00",
+        "source": "bisnis-market"
+      },
+      "expected": {
+        "recencyScore": 21.21,
+        "tickerScore": 30,
+        "tickers": ["BBCA", "ADRO", "EXCL"]
+      }
+    }
+  ]
+}
