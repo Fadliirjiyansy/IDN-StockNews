@@ -15,3 +15,9 @@ logs/
 
 # Node modules (if any scripts added later)
 node_modules/
+
+# Docker persistent data (volumes)
+data/n8n/*
+data/postgres/*
+!data/n8n/.gitkeep
+!data/postgres/.gitkeep

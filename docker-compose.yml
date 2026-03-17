@@ -1,0 +1,127 @@
+# =============================================================================
+# Docker Compose — n8n + PostgreSQL
+# =============================================================================
+# A production-ready setup for running n8n workflow automation backed by
+# PostgreSQL. All secrets are sourced from the .env file (never hardcoded).
+#
+# Quick start:
+#   1. Copy .env.example → .env and fill in real values
+#   2. docker compose up -d
+#   3. Open http://localhost:5678
+#
+# Production notes:
+#   - Put a reverse proxy (Nginx / Traefik / Caddy) in front for HTTPS.
+#   - Set N8N_HOST and WEBHOOK_URL to your public domain.
+#   - Consider enabling N8N_BASIC_AUTH for an additional login layer.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — persistent relational database for n8n
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: idn-stocknews-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+    volumes:
+      # Persist database files on the host so data survives container restarts
+      - ./data/postgres:/var/lib/postgresql/data
+
+    networks:
+      - n8n-network
+
+    # Health check so n8n waits until Postgres is truly ready
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # n8n — workflow automation engine
+  # ---------------------------------------------------------------------------
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: idn-stocknews-n8n
+    restart: unless-stopped
+
+    # Wait for Postgres to be healthy before starting
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      # ---- Database -----------------------------------------------------------
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres          # Docker service name = hostname
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # ---- Security -----------------------------------------------------------
+      # Encryption key for credentials stored in the database.
+      # Generate once, never change: openssl rand -hex 32
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+
+      # ---- Host & Webhook -----------------------------------------------------
+      N8N_HOST: ${N8N_HOST}
+      N8N_PORT: ${N8N_PORT}
+      N8N_PROTOCOL: ${N8N_PROTOCOL}
+      WEBHOOK_URL: ${WEBHOOK_URL}
+
+      # ---- Timezone -----------------------------------------------------------
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
+      TZ: ${GENERIC_TIMEZONE}
+
+      # ---- Optional: Basic Auth (uncomment to enable) -------------------------
+      # N8N_BASIC_AUTH_ACTIVE: "true"
+      # N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
+      # N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
+
+    volumes:
+      # Persist n8n data (custom nodes, uploaded files, etc.)
+      - ./data/n8n:/home/node/.n8n
+
+    ports:
+      # Expose n8n UI. In production, keep this behind a reverse proxy.
+      - "${N8N_PORT}:${N8N_PORT}"
+
+    networks:
+      - n8n-network
+
+# =============================================================================
+# Networks — isolated bridge for inter-service communication
+# =============================================================================
+networks:
+  n8n-network:
+    name: idn-stocknews-n8n-network
+    driver: bridge
+
+# =============================================================================
+# PRODUCTION UPGRADE PATH
+# =============================================================================
+# 1. Reverse Proxy (HTTPS)
+#    Add an Nginx, Traefik, or Caddy service to this file (or use the
+#    existing config in infra/nginx/n8n.conf). Proxy traffic on port 443
+#    to n8n:5678 and terminate TLS with Let's Encrypt.
+#
+# 2. Backups
+#    Schedule pg_dump via cron:
+#      docker exec idn-stocknews-postgres pg_dump -U n8n n8n > backup.sql
+#
+# 3. Resource limits
+#    Add deploy.resources.limits to each service for memory/CPU caps.
+#
+# 4. Logging
+#    Configure logging drivers (e.g. json-file with max-size) to prevent
+#    disk fill on long-running VPS instances.
+# =============================================================================

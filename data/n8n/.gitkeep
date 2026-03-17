@@ -1,0 +1,2 @@
+# This directory persists n8n application data (files, custom nodes, etc.)
+# It is mounted into the n8n container at /home/node/.n8n
