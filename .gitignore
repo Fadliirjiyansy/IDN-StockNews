@@ -22,3 +22,4 @@ data/n8n/*
 data/postgres/*
 !data/n8n/.gitkeep
 !data/postgres/.gitkeep
+.gitignore
