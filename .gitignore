@@ -21,4 +21,4 @@ data/n8n/*
 !data/n8n/.gitkeep
 
 # Secrets
-secrents/
+secrets/
