@@ -4,6 +4,7 @@ n8n_data/
 # Environment variables
 .env
 .env.local
+infra/docker/.env
 
 # OS files
 .DS_Store
