@@ -1,2 +1,0 @@
-# This directory persists PostgreSQL database files.
-# It is mounted into the postgres container at /var/lib/postgresql/data

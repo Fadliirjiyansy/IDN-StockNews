@@ -1,8 +1,0 @@
-{
-  "example": "telegram_message",
-  "payload": {
-    "chat_id": "-1001234567890",
-    "text": "📈 *IDN Stock Briefing — 10 Mar 2026*\n\n🔹 IHSG: 7,245 (+0.82%)\n🔹 Top Gainer: BBCA +2.1%\n🔹 Top Loser: TLKM -1.4%\n\n📰 *Top Headlines*\n1. Bank Indonesia pertahankan suku bunga 5.75%\n2. BBRI cetak laba bersih Rp 12T di Q4 2025\n3. Indeks saham Asia menguat seiring data inflasi AS\n\n_Briefing otomatis via IDN-StockNews_",
-    "parse_mode": "Markdown"
-  }
-}

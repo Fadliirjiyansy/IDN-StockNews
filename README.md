@@ -10,8 +10,9 @@ An automated Indonesian stock market briefing system powered by **n8n**. Collect
 IDN-StockNews/
 ├── .github/                   GitHub Actions CI + issue templates
 ├── config/
-│   ├── .env                   ← copy from .env.example and fill in values
 │   └── rss-sources.json       RSS feed registry (4 active sources)
+├── data/
+│   └── n8n/                   Persisted n8n data (bind mount)
 ├── docs/
 │   ├── architecture/          System design overview
 │   ├── workflows/             Per-workflow guides
@@ -19,10 +20,10 @@ IDN-StockNews/
 │   └── deployment/            VPS + production deployment guide
 ├── examples/                  Sample payloads (RSS items, Telegram messages)
 ├── infra/
-│   ├── docker/                docker-compose.yml (n8n + PostgreSQL)
 │   ├── nginx/                 Reverse proxy config
 │   └── vps/                   VPS bootstrap script
 ├── n8n/
+│   ├── code-nodes/            Custom n8n code nodes
 │   └── workflows/             Importable n8n workflow JSON files
 ├── scripts/
 │   ├── setup/                 First-run helpers
@@ -32,8 +33,12 @@ IDN-StockNews/
 │   ├── fixtures/              Sample data for offline testing
 │   ├── integration/           End-to-end pipeline tests
 │   └── unit/                  Unit tests for helper functions
-└── workflows/                 Workflow documentation
+├── docker-compose.yml         n8n + PostgreSQL service definitions
+├── .env.example               Template environment variables
+└── .env                       Your actual secrets (git-ignored)
 ```
+
+> **Note:** PostgreSQL data is stored in a named Docker volume (`postgres_data`), not a host directory.
 
 ---
 
@@ -44,15 +49,14 @@ IDN-StockNews/
 ```bash
 git clone https://github.com/Fadliirjiyansy/IDN-StockNews.git
 cd IDN-StockNews
-cp config/.env.example config/.env
-# Edit config/.env with your Telegram token, API keys, etc.
+cp .env.example .env
+# Edit .env with your Telegram token, API keys, etc.
 ```
 
 ### 2. Start services (n8n + PostgreSQL)
 
 ```bash
-cd infra/docker
-docker compose --env-file ../../config/.env up -d
+docker compose up -d
 ```
 
 ### 3. Import workflows
@@ -75,8 +79,9 @@ Open **Market Briefing - Full Pipeline** and click **Test workflow** — check y
 
 | Workflow | File | Status |
 |----------|------|--------|
-| Full Pipeline | `n8n/workflows/market-briefing-pipeline.json` | ✅ Active |
-| Test Workflow | `n8n/workflows/test-workflow.json` | ✅ Ready |
+| Full Pipeline | `n8n/workflows/Workflow-0.0.1/market-briefing-pipeline.json` | ✅ Active |
+| Scoring v0.1.0 | `n8n/workflows/workflow-0.1.0/workflow-0.1.0.json` | ✅ Ready |
+| Test Workflow | `n8n/workflows/Workflow-0.0.1/test-workflow.json` | ✅ Ready |
 
 ---
 
@@ -109,6 +114,7 @@ python3 tests/integration/test_pipeline.py
 - [Pipeline Workflow Guide](docs/workflows/market-briefing-pipeline.md)
 - [Telegram Bot Setup](docs/api/telegram-setup.md)
 - [VPS Deployment](docs/deployment/vps-deployment.md)
+- [Docker Setup Guide](docs/n8n-docker-setup.md)
 
 ---
 

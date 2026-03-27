@@ -4,7 +4,6 @@ n8n_data/
 # Environment variables
 .env
 .env.local
-infra/docker/.env
 
 # OS files
 .DS_Store
@@ -17,9 +16,6 @@ logs/
 # Node modules (if any scripts added later)
 node_modules/
 
-# Docker persistent data (volumes)
+# Docker persistent data (n8n bind mount)
 data/n8n/*
-data/postgres/*
 !data/n8n/.gitkeep
-!data/postgres/.gitkeep
-.gitignore

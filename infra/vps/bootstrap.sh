@@ -17,8 +17,5 @@ sudo apt-get install -y docker-compose-plugin
 # Install nginx + certbot
 sudo apt-get install -y nginx certbot python3-certbot-nginx
 
-# Create data directories
-mkdir -p ~/IDN-StockNews/n8n_data
-
 echo "✅ VPS setup complete!"
-echo "Next: clone the repo and run 'docker compose up -d' in infra/docker/"
+echo "Next: clone the repo and run 'docker compose up -d' from the project root."

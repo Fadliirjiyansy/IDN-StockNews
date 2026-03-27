@@ -6,12 +6,11 @@ Production-ready Docker setup for **n8n** workflow automation backed by **Postgr
 
 ```
 IDN-StockNews/
-├── docker-compose.yml    # Service definitions
+├── docker-compose.yml    # Service definitions (root level)
 ├── .env.example          # Template environment variables
 ├── .env                  # Your actual secrets (git-ignored)
 ├── data/
-│   ├── n8n/              # Persisted n8n data
-│   └── postgres/         # Persisted PostgreSQL data
+│   └── n8n/              # Persisted n8n data (bind mount)
 ├── infra/
 │   ├── nginx/n8n.conf    # Reverse proxy config (for production)
 │   └── vps/bootstrap.sh  # VPS setup script
@@ -19,6 +18,8 @@ IDN-StockNews/
     ├── code-nodes/       # Custom n8n code nodes
     └── workflows/        # Exported n8n workflows
 ```
+
+> **Note:** PostgreSQL data is stored in a named Docker volume (`postgres_data`), not a host bind mount.
 
 ## 🚀 Quick Start
 
@@ -138,6 +139,6 @@ Set to `Asia/Jakarta` by default. Change `GENERIC_TIMEZONE` in `.env` to adjust.
 
 ## 📝 Notes
 
-- **Data persistence**: All data is stored in `./data/` on the host. Deleting these folders **will erase all data**.
+- **Data persistence**: n8n data is stored in `./data/n8n/` on the host. PostgreSQL data is in a named Docker volume (`postgres_data`). Running `docker compose down -v` **will erase all Postgres data**.
 - **Updates**: Run `docker compose pull && docker compose up -d` to update to latest images.
 - **Scaling**: This setup is designed for single-node. For HA, see [n8n queue mode](https://docs.n8n.io/hosting/scaling/queue-mode/).

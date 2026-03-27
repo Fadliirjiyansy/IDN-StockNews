@@ -8,14 +8,14 @@ echo "🔧 IDN-StockNews First-Run Setup"
 echo "================================="
 
 # Check .env exists
-if [ ! -f "$REPO_ROOT/config/.env" ]; then
-  echo "📋 Creating config/.env from example..."
-  cp "$REPO_ROOT/config/.env.example" "$REPO_ROOT/config/.env"
-  echo "⚠️  Please edit config/.env and fill in your values, then re-run this script."
+if [ ! -f "$REPO_ROOT/.env" ]; then
+  echo "📋 Creating .env from example..."
+  cp "$REPO_ROOT/.env.example" "$REPO_ROOT/.env"
+  echo "⚠️  Please edit .env and fill in your values, then re-run this script."
   exit 0
 fi
 
-echo "✅ config/.env found"
+echo "✅ .env found"
 
 # Check Docker
 if ! command -v docker &> /dev/null; then
@@ -27,8 +27,8 @@ echo "✅ Docker found: $(docker --version)"
 
 # Start n8n
 echo "🐳 Starting n8n..."
-cd "$REPO_ROOT/infra/docker"
-docker compose --env-file "$REPO_ROOT/config/.env" up -d
+cd "$REPO_ROOT"
+docker compose up -d
 
 echo ""
 echo "✅ n8n is running at http://localhost:5678"

@@ -3,16 +3,14 @@
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-COMPOSE_FILE="$REPO_ROOT/infra/docker/docker-compose.yml"
-ENV_FILE="$REPO_ROOT/config/.env"
 
 echo "🚀 Deploying IDN-StockNews..."
 
 # Pull latest images
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull
+docker compose -f "$REPO_ROOT/docker-compose.yml" pull
 
 # Restart with zero downtime
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --force-recreate
+docker compose -f "$REPO_ROOT/docker-compose.yml" up -d --force-recreate
 
 echo "✅ Deployment complete!"
-docker compose -f "$COMPOSE_FILE" ps
+docker compose -f "$REPO_ROOT/docker-compose.yml" ps
