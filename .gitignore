@@ -20,5 +20,6 @@ node_modules/
 data/n8n/*
 !data/n8n/.gitkeep
 
-# Secrets
-secrets/*
+# Secrets — ignore everything inside, at any depth
+secrets/
+!secrets/.gitkeep
