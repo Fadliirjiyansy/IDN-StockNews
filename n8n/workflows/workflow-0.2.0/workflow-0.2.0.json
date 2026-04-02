@@ -1,0 +1,266 @@
+{
+  "name": "IDX Event Tracker — v0.2.0",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://event-tracker:5055/run",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "trigger-pipeline-run",
+      "name": "Trigger Scrape Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Check pipeline run result ─────────────────────────────\nconst result = $input.first().json;\n\nif (result.status !== 'ok') {\n  throw new Error(`Pipeline run failed: ${result.message || JSON.stringify(result)}`);\n}\n\nreturn [{\n  json: {\n    run_ok:   true,\n    inserted: result.inserted,\n    skipped:  result.skipped,\n    errors:   result.errors,\n    run_at:   result.run_at,\n  }\n}];"
+      },
+      "id": "check-run-result",
+      "name": "Check Run Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://event-tracker:5055/events/new",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "hours",
+              "value": "7"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "fetch-new-events",
+      "name": "Fetch New Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-new-events",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-new-events",
+      "name": "Has New Events?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Split event list into individual items ─────────────────\nconst data = $input.first().json;\nconst events = data.events || [];\n\nif (events.length === 0) {\n  return [];\n}\n\n// Return each event as a separate item for downstream processing\nreturn events.map(event => ({ json: event }));"
+      },
+      "id": "split-events",
+      "name": "Split Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Format Telegram alert per event type ──────────────────\n//\n// Alert templates:\n//   IPO          → 📈 Upcoming IPO\n//   DIVIDEND     → 💰 Dividend\n//   RIGHTS_ISSUE → 📋 Rights Issue\n//   STOCK_SPLIT  → ✂️ Stock Split\n//   BONUS_SHARES → 🎁 Bonus Shares\n//   BUYBACK      → 🔄 Buyback\n//   SUSPENSION   → ⚠️ Trading Suspension\n//   AGM          → 🏛 AGM (RUPS Tahunan)\n//   EGM          → 🏛 EGM (RUPS Luar Biasa)\n//   DELISTING    → 🚫 Delisting\n\nconst CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-100123456789';\n\nfunction fmtDate(d) {\n  if (!d) return 'TBA';\n  const dt = new Date(d);\n  if (isNaN(dt)) return d;\n  return dt.toLocaleDateString('id-ID', {\n    day: '2-digit', month: 'short', year: 'numeric'\n  });\n}\n\nfunction buildMessage(ev) {\n  const ticker  = ev.ticker  || '-';\n  const company = ev.company || ev.ticker || 'N/A';\n\n  switch (ev.event_type) {\n    case 'IPO':\n      return [\n        `📈 *Upcoming IPO*`,\n        `Company      : ${company}`,\n        `Ticker       : ${ticker}`,\n        `Book-Build   : ${fmtDate(ev.book_build_start)} – ${fmtDate(ev.book_build_end)}`,\n        `Listing Date : ${fmtDate(ev.listing_date)}`,\n        ev.url ? `\\n[IDX/e-IPO](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'DIVIDEND':\n      return [\n        `💰 *Dividend Announcement*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Ex-Date     : ${fmtDate(ev.ex_date)}`,\n        `Record Date : ${fmtDate(ev.record_date)}`,\n        ev.description ? `Detail      : ${ev.description}` : '',\n        ev.url ? `\\n[Detail](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'RIGHTS_ISSUE':\n      return [\n        `📋 *Rights Issue (HMETD)*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Ex-Date     : ${fmtDate(ev.ex_date)}`,\n        `Record Date : ${fmtDate(ev.record_date)}`,\n        ev.description ? `Detail      : ${ev.description}` : '',\n        ev.url ? `\\n[Detail](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'STOCK_SPLIT':\n      return [\n        `✂️ *Stock Split*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Efektif     : ${fmtDate(ev.event_date)}`,\n        ev.description ? `Detail      : ${ev.description}` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'BONUS_SHARES':\n      return [\n        `🎁 *Bonus Shares*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n        ev.description ? `Detail      : ${ev.description}` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'BUYBACK':\n      return [\n        `🔄 *Share Buyback*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n      ].filter(Boolean).join('\\n');\n\n    case 'SUSPENSION':\n      return [\n        `⚠️ *Trading Suspension*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n        `Alasan      : ${ev.description || 'Lihat pengumuman IDX'}`,\n        ev.url ? `\\n[Pengumuman](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'AGM':\n      return [\n        `🏛 *RUPS Tahunan (AGM)*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n        ev.url ? `\\n[Pengumuman](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'EGM':\n      return [\n        `🏛 *RUPS Luar Biasa (EGM)*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n        ev.url ? `\\n[Pengumuman](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'DELISTING':\n      return [\n        `🚫 *Delisting Notice*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n        ev.url ? `\\n[Detail](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    default:\n      return [\n        `📌 *Market Event*`,\n        `Type        : ${ev.event_type}`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n      ].join('\\n');\n  }\n}\n\nconst event = $input.first().json;\nconst text  = buildMessage(event);\n\nreturn [{\n  json: {\n    chat_id:                  CHAT_ID,\n    text:                     text,\n    parse_mode:               'Markdown',\n    disable_web_page_preview: true,\n    event_type:               event.event_type,\n    ticker:                   event.ticker,\n  }\n}];"
+      },
+      "id": "format-alert",
+      "name": "Format Alert Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "send-telegram-alert",
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [1780, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-cred",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "no-new-events",
+      "name": "No New Events",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1340, 420]
+    }
+  ],
+  "connections": {
+    "Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Trigger Scrape Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Scrape Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Check Run Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Run Result": {
+      "main": [
+        [
+          {
+            "node": "Fetch New Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch New Events": {
+      "main": [
+        [
+          {
+            "node": "Has New Events?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has New Events?": {
+      "main": [
+        [
+          {
+            "node": "Split Events",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No New Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Events": {
+      "main": [
+        [
+          {
+            "node": "Format Alert Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Alert Message": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "market-briefing"
+    },
+    {
+      "name": "event-tracker"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-04-02T10:00:00.000Z",
+  "id": "workflow-event-tracker-020",
+  "meta": {
+    "instanceId": "market-briefing-local",
+    "templateId": "idx-event-tracker-v020"
+  },
+  "versionId": "0.2.0"
+}

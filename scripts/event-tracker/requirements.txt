@@ -1,0 +1,24 @@
+# IDX Event Tracker — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# HTTP & Scraping
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# Data handling
+pandas==2.2.0
+python-dateutil==2.9.0
+
+# Resilience
+tenacity==8.2.3
+
+# Database
+psycopg2-binary==2.9.9
+
+# API server
+flask==3.0.2
+flask-cors==4.0.0
+
+# Config
+python-dotenv==1.0.1
