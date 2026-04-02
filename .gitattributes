@@ -1,0 +1,38 @@
+# Handle line endings automatically for all files
+# This ensures consistent LF line endings in the repository,
+# regardless of the developer's OS (Windows or Linux).
+
+# Default behavior: normalize all text files to LF in the repo
+* text=auto eol=lf
+
+# Explicitly declare text files that should always be LF
+*.json        text eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+*.md          text eol=lf
+*.txt         text eol=lf
+*.sh          text eol=lf
+*.env         text eol=lf
+*.env.example text eol=lf
+*.gitignore   text eol=lf
+*.py          text eol=lf
+*.js          text eol=lf
+*.ts          text eol=lf
+*.html        text eol=lf
+*.css         text eol=lf
+*.toml        text eol=lf
+*.ini         text eol=lf
+*.cfg         text eol=lf
+Dockerfile    text eol=lf
+*.dockerfile  text eol=lf
+
+# Declare binary files to prevent line ending normalization
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.tar   binary
+*.gz    binary

@@ -6,7 +6,10 @@
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [240, 400],
+      "position": [
+        240,
+        400
+      ],
       "parameters": {}
     },
     {
@@ -14,7 +17,10 @@
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [240, 200],
+      "position": [
+        240,
+        200
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -35,7 +41,10 @@
       "name": "Fetch Kontan",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
-      "position": [500, 200],
+      "position": [
+        500,
+        200
+      ],
       "onError": "continueRegularOutput",
       "parameters": {
         "url": "https://investasi.kontan.co.id/rss/berita/pasar-modal",
@@ -47,7 +56,10 @@
       "name": "Fetch Bisnis",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
-      "position": [500, 400],
+      "position": [
+        500,
+        400
+      ],
       "onError": "continueRegularOutput",
       "parameters": {
         "url": "https://market.bisnis.com/rss",
@@ -59,7 +71,10 @@
       "name": "Fetch Detik",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
-      "position": [500, 600],
+      "position": [
+        500,
+        600
+      ],
       "onError": "continueRegularOutput",
       "parameters": {
         "url": "https://finance.detik.com/rss",
@@ -71,7 +86,10 @@
       "name": "Fetch Reuters",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
-      "position": [500, 800],
+      "position": [
+        500,
+        800
+      ],
       "onError": "continueRegularOutput",
       "parameters": {
         "url": "https://feeds.reuters.com/reuters/INbusinessNews",
@@ -83,7 +101,10 @@
       "name": "Merge Group A",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
-      "position": [750, 300],
+      "position": [
+        750,
+        300
+      ],
       "parameters": {
         "mode": "append"
       }
@@ -93,7 +114,10 @@
       "name": "Merge Group B",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
-      "position": [750, 700],
+      "position": [
+        750,
+        700
+      ],
       "parameters": {
         "mode": "append"
       }
@@ -103,7 +127,10 @@
       "name": "Merge All Feeds",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
-      "position": [1000, 500],
+      "position": [
+        1000,
+        500
+      ],
       "parameters": {
         "mode": "append"
       }
@@ -113,10 +140,13 @@
       "name": "Deduplicate & Filter",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1250, 500],
+      "position": [
+        1250,
+        500
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Deduplicate by link/URL and filter to last 24 hours\nconst items = $input.all();\nconst seen = new Set();\nconst now = new Date();\nconst cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);\n\nconst unique = [];\nfor (const item of items) {\n  const link = item.json.link || item.json.guid || '';\n  if (!link || seen.has(link)) continue;\n  seen.add(link);\n  \n  const pubDate = item.json.pubDate || item.json.isoDate || '';\n  if (pubDate) {\n    const d = new Date(pubDate);\n    if (d < cutoff) continue;\n  }\n  \n  unique.push({\n    json: {\n      title: item.json.title || 'No title',\n      link: link,\n      pubDate: pubDate,\n      content: item.json.contentSnippet || item.json.content || item.json.description || '',\n      source: item.json.creator || item.json['dc:creator'] || 'Unknown',\n      category: item.json.categories ? item.json.categories[0] : 'general'\n    }\n  });\n}\n\nif (unique.length === 0) {\n  return [{ json: { title: 'No recent news found', link: '', pubDate: new Date().toISOString(), content: '', source: 'system', category: 'none' } }];\n}\n\nreturn unique;"
+        "jsCode": "// Deduplicate by link/URL, filter to last 24 hours, tag feedSource\n// feedSource is the n8n node name that produced this item — used\n// downstream by Format Telegram Message to split IDN vs international.\nconst items = $input.all();\nconst seen = new Set();\nconst now = new Date();\nconst cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);\n\n// Map n8n node name → stable source ID\nconst NODE_TO_SOURCE = {\n  'Fetch Kontan': 'kontan-market',\n  'Fetch Bisnis':  'bisnis-market',\n  'Fetch Detik':   'detik-finance',\n  'Fetch Reuters': 'reuters-indonesia',\n};\n\nconst unique = [];\nfor (const item of items) {\n  const link = item.json.link || item.json.guid || '';\n  if (!link || seen.has(link)) continue;\n  seen.add(link);\n\n  const pubDate = item.json.pubDate || item.json.isoDate || '';\n  if (pubDate) {\n    const d = new Date(pubDate);\n    if (d < cutoff) continue;\n  }\n\n  // Resolve feedSource: prefer existing field, fall back to node-name map\n  const nodeName = item.json.$node || '';\n  const feedSource =\n    item.json.feedSource ||\n    NODE_TO_SOURCE[nodeName] ||\n    'unknown';\n\n  unique.push({\n    json: {\n      title:      item.json.title || 'No title',\n      link:       link,\n      pubDate:    pubDate,\n      content:    item.json.contentSnippet || item.json.content || item.json.description || '',\n      source:     feedSource,\n      category:   item.json.categories ? item.json.categories[0] : 'general',\n    }\n  });\n}\n\nif (unique.length === 0) {\n  return [{ json: { title: 'No recent news found', link: '', pubDate: new Date().toISOString(), content: '', source: 'system', category: 'none' } }];\n}\n\nreturn unique;"
       }
     },
     {
@@ -124,7 +154,10 @@
       "name": "Score & Rank",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1500, 500],
+      "position": [
+        1500,
+        500
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// ============================================================\n// SCORING MODULE v0.1.0\n// Signals: Recency (decay) + Ticker (NER) + Keyword (lexicon)\n// ============================================================\n\n// ── Configuration ──\nconst CONFIG = {\n  recency: { halfLife: 6, maxScore: 30, fallback: 15 },\n  ticker:  { maxScore: 35 },\n  keyword: { maxScore: 15 },\n  topN: 10\n};\n\nconst DECAY_LAMBDA = Math.LN2 / CONFIG.recency.halfLife;\n\n// ── Watchlist: Tiered LQ45 tickers ──\n// Heuristic engineering weights for market importance.\nconst WATCHLIST = {\n  BBCA:15, BBRI:15, BMRI:15, TLKM:15, ASII:15,\n  BBNI:15, GOTO:15, AMMN:15, BREN:15, BYAN:15,\n  ADRO:10, PTBA:10, ANTM:10, MDKA:10, INDF:10,\n  ICBP:10, UNVR:10, KLBF:10, SMGR:10, INTP:10, BRIS:10,\n  EXCL:5, MTEL:5, BUKA:5\n};\n\n// Single compiled regex — O(n) single-pass scan\nconst TICKER_PATTERN = new RegExp(\n  '\\\\b(' + Object.keys(WATCHLIST).join('|') + ')\\\\b', 'gi'\n);\n\n// ── Keyword Tiers: Financial Event Lexicon ──\n// Heuristic keyword lexicon for market-impacting events.\n// Returns HIGHEST matching tier only (no summing across tiers).\nconst KEYWORD_TIERS = [\n  {\n    name: 'high', pts: 15,\n    words: [\n      'dividen','dividend','stock split','pemecahan saham',\n      'merger','akuisisi','takeover','ipo','rights issue','buyback',\n      'default','gagal bayar','bangkrut','pailit',\n      'suspensi','delisting','bi rate','suku bunga'\n    ]\n  },\n  {\n    name: 'medium', pts: 8,\n    words: [\n      'laba bersih','pendapatan','laporan keuangan','earnings',\n      'profit','revenue','rups','dividend payout','eps','roe'\n    ]\n  },\n  {\n    name: 'low', pts: 4,\n    words: [\n      'rekomendasi','target harga','price target',\n      'upgrade','downgrade','outlook','analis'\n    ]\n  }\n];\n\n// ── Signal 1: Recency Score ──\n// score = maxScore × e^(−λ × Δh), λ = ln(2)/halfLife\nfunction recencyScore(pubDate, now) {\n  const { maxScore, fallback } = CONFIG.recency;\n  if (!pubDate) return fallback;\n  const pubMs = Date.parse(pubDate);\n  if (Number.isNaN(pubMs)) return fallback;\n  const hoursAgo = (now.getTime() - pubMs) / 3600000;\n  const deltaH = Math.max(0, hoursAgo);\n  return Math.round(maxScore * Math.exp(-DECAY_LAMBDA * deltaH) * 100) / 100;\n}\n\n// ── Signal 2: Ticker Match ──\nfunction tickerMatch(title, content) {\n  const text = ((title || '') + ' ' + (content || '')).toUpperCase();\n  TICKER_PATTERN.lastIndex = 0;\n  const found = new Set();\n  let m;\n  while ((m = TICKER_PATTERN.exec(text)) !== null) found.add(m[1]);\n  const tickers = Array.from(found);\n  let raw = 0;\n  for (const t of tickers) raw += WATCHLIST[t] || 0;\n  return { score: Math.min(raw, CONFIG.ticker.maxScore), tickers };\n}\n\n// ── Signal 3: Keyword Boost ──\n// Heuristic financial event lexicon — NOT sentiment analysis.\n// Returns highest matching tier score only.\nfunction keywordScore(title, content) {\n  const text = ((title || '') + ' ' + (content || '')).toLowerCase();\n  for (const tier of KEYWORD_TIERS) {\n    for (const word of tier.words) {\n      if (text.indexOf(word) !== -1) {\n        return { score: tier.pts, keyword: word };\n      }\n    }\n  }\n  return { score: 0, keyword: null };\n}\n\n// ── Final Score ──\n// finalScore = recencyScore + tickerScore + keywordScore (max ≈ 80)\nfunction finalScore(r, t, k) {\n  return Math.round((r + t + k) * 100) / 100;\n}\n\n// ── Main ──\nconst items = $input.all();\nconst now = new Date();\n\nconst scored = items.map(item => {\n  const a = item.json;\n  const rScore  = recencyScore(a.pubDate, now);\n  const tResult = tickerMatch(a.title, a.content);\n  const kResult = keywordScore(a.title, a.content);\n  const fScore  = finalScore(rScore, tResult.score, kResult.score);\n  return {\n    json: {\n      ...a,\n      recencyScore: rScore,\n      tickerScore:  tResult.score,\n      tickers:      tResult.tickers,\n      keywordScore: kResult.score,\n      matchedKeyword: kResult.keyword,\n      finalScore:   fScore\n    }\n  };\n});\n\nscored.sort((a, b) => b.json.finalScore - a.json.finalScore);\nreturn scored.slice(0, CONFIG.topN);"
@@ -135,10 +168,13 @@
       "name": "Format Telegram Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1750, 500],
+      "position": [
+        1750,
+        500
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Build Telegram-ready Markdown message with ticker + keyword badges\nconst items = $input.all();\nconst now = new Date();\n\nconst wibOffset = 7 * 60 * 60 * 1000;\nconst wibDate = new Date(now.getTime() + wibOffset);\nconst hours = wibDate.getUTCHours();\nconst edition = hours < 12 ? 'Morning Edition' : 'Afternoon Edition';\n\nconst months = ['January','February','March','April','May','June','July','August','September','October','November','December'];\nconst dateStr = `${wibDate.getUTCDate()} ${months[wibDate.getUTCMonth()]} ${wibDate.getUTCFullYear()}`;\nconst timeStr = `${String(wibDate.getUTCHours()).padStart(2,'0')}:${String(wibDate.getUTCMinutes()).padStart(2,'0')} WIB`;\n\nlet msg = `📈 *IDN Market Briefing — ${edition}*\\n`;\nmsg += `🕘 ${dateStr} | ${timeStr}\\n\\n`;\nmsg += `*Top News:*\\n`;\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i].json;\n  if (item.title === 'No recent news found') {\n    msg += `_No recent market news available._\\n`;\n    break;\n  }\n  const tickerBadge = item.tickers && item.tickers.length > 0\n    ? ' 🏷 ' + item.tickers.join(', ')\n    : '';\n  const kwBadge = item.matchedKeyword\n    ? ' 📌 ' + item.matchedKeyword\n    : '';\n  const source = item.source !== 'Unknown' ? ` — ${item.source}` : '';\n  msg += `${i+1}. [${item.title}](${item.link})${tickerBadge}${kwBadge}${source}\\n`;\n}\n\nmsg += `\\n---\\n_Powered by IDN-StockNews v0.1.0_`;\n\nreturn [{\n  json: {\n    text: msg,\n    parse_mode: 'Markdown',\n    article_count: items.length,\n    edition: edition,\n    generated_at: now.toISOString()\n  }\n}];"
+        "jsCode": "// ============================================================\n// FORMAT TELEGRAM MESSAGE — v0.1.1\n// Style A (compact/terminal) + Style C news segmentation\n// No emoji. Telegram Markdown-safe. 4096-char guard.\n// ============================================================\n\nconst IDN_SOURCES = new Set([\n  'kontan-market', 'bisnis-market', 'detik-finance'\n]);\n\nconst SOURCE_LABEL = {\n  'kontan-market':     'Kontan',\n  'bisnis-market':     'Bisnis.com',\n  'detik-finance':     'Detik Finance',\n  'reuters-indonesia': 'Reuters',\n  'bloomberg':         'Bloomberg',\n};\n\nconst SEP = '─────────────────────────';\nconst MAX_CHARS = 4096;\n\n// ── Helpers ──────────────────────────────────────────────\n\nfunction wibNow(date) {\n  return new Date(date.getTime() + 7 * 3600000);\n}\n\nfunction dateStr(date) {\n  const d = wibNow(date);\n  const months = ['January','February','March','April','May','June',\n                  'July','August','September','October','November','December'];\n  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;\n}\n\nfunction timeStr(date) {\n  const d = wibNow(date);\n  return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')} WIB`;\n}\n\nfunction edition(date) {\n  return wibNow(date).getUTCHours() < 12 ? 'Morning Edition' : 'Afternoon Edition';\n}\n\n// Escape Telegram Markdown special chars inside link label text\nfunction escMd(str) {\n  return (str || '').replace(/([_*`\\[\\]])/g, '\\\\$1');\n}\n\nfunction articleTimeStr(pubDate) {\n  if (!pubDate) return '';\n  const d = new Date(pubDate);\n  if (isNaN(d)) return '';\n  return timeStr(d);\n}\n\nfunction srcLabel(src) {\n  return SOURCE_LABEL[src] || src || 'Unknown';\n}\n\n// ── Inputs ────────────────────────────────────────────────\n\nconst items = $input.all();\nconst now   = new Date();\n\nconst idnItems  = items.filter(i => IDN_SOURCES.has(i.json.source));\nconst intlItems = items.filter(i => !IDN_SOURCES.has(i.json.source));\n\n// ── PART 1: Header + Market Data ─────────────────────────\n// Commodity, gainers, and corporate action are placeholder\n// sections. Wire a live-data node upstream and replace these\n// static strings with $('Live Data').first().json.* expressions.\n\nlet part1 = '';\npart1 += `*IDN Market Briefing - ${edition(now)}*\\n`;\npart1 += `${dateStr(now)} | ${timeStr(now)}\\n`;\npart1 += `${SEP}\\n`;\n\npart1 += `\\n*COMMODITY STATS*\\n`;\npart1 += `Palm Oil   : 4,820 MYR/t   +1.2%\\n`;\npart1 += `Coal       :   138.5 USD/t  -0.4%\\n`;\npart1 += `Nickel     : 16,340 USD/t  +0.8%\\n`;\npart1 += `CPO Index  :  4,105         +0.6%\\n`;\n\npart1 += `\\n${SEP}\\n`;\npart1 += `*TOP GAINERS - IDN STOCK*\\n`;\npart1 += `Ticker  Daily   Weekly  Monthly\\n`;\npart1 += `BBCA   +3.41%  +5.20%  +12.4%\\n`;\npart1 += `GOTO   +2.87%  +4.10%   +8.7%\\n`;\npart1 += `BMRI   +2.10%  +3.80%   +9.2%\\n`;\npart1 += `ADRO   +1.95%  +6.40%  +18.1%\\n`;\npart1 += `MTEL   +1.80%  +2.90%   +7.6%\\n`;\n\npart1 += `\\n*TOP GAINERS - US STOCK*\\n`;\npart1 += `Ticker  Daily   Weekly  Monthly\\n`;\npart1 += `NVDA   +4.21%  +9.20%  +31.5%\\n`;\npart1 += `TSLA   +3.18%  +6.80%  +22.4%\\n`;\npart1 += `META   +2.90%  +8.75%  +19.8%\\n`;\npart1 += `AMZN   +1.75%  +5.90%  +14.2%\\n`;\npart1 += `GOOG   +1.40%  +4.10%  +11.3%\\n`;\n\npart1 += `\\n*TOP GAINERS - CRYPTO*\\n`;\npart1 += `Ticker  Daily   Weekly  Monthly\\n`;\npart1 += `BTC    +2.90%  +8.40%  +22.4%\\n`;\npart1 += `SOL    +4.11% +12.30%  +31.2%\\n`;\npart1 += `ETH    +1.80%  +7.80%  +18.9%\\n`;\npart1 += `BNB    +2.10%  +5.50%  +14.5%\\n`;\npart1 += `AVAX   +3.50% +10.20%  +28.3%\\n`;\n\npart1 += `\\n${SEP}\\n`;\npart1 += `*CORPORATE ACTION - IDN*\\n`;\npart1 += `BBRI  Dividend      Rp 200/share   Record 20 Mar\\n`;\npart1 += `TLKM  Rights Issue  1:5            Exercise 25 Mar\\n`;\npart1 += `GOTO  Stock Split   1:10           Effective 1 Apr\\n`;\n\n// ── PART 2: News sections ─────────────────────────────────\n\nlet part2 = '';\n\npart2 += `${SEP}\\n`;\npart2 += `*# IDN NEWS*\\n`;\nif (idnItems.length === 0) {\n  part2 += `_Tidak ada berita IDN terbaru._\\n`;\n} else {\n  idnItems.forEach((item, i) => {\n    const a   = item.json;\n    const t   = articleTimeStr(a.pubDate);\n    const src = srcLabel(a.source);\n    part2 += `${i + 1}. [${escMd(a.title)}](${a.link})\\n`;\n    part2 += `   ${src}${t ? ' | ' + t : ''}\\n`;\n  });\n}\n\npart2 += `\\n*# INTERNATIONAL NEWS*\\n`;\nif (intlItems.length === 0) {\n  part2 += `_No international news available._\\n`;\n} else {\n  intlItems.forEach((item, i) => {\n    const a   = item.json;\n    const t   = articleTimeStr(a.pubDate);\n    const src = srcLabel(a.source);\n    part2 += `${i + 1}. [${escMd(a.title)}](${a.link})\\n`;\n    part2 += `   ${src}${t ? ' | ' + t : ''}\\n`;\n  });\n}\n\npart2 += `\\n${SEP}\\n`;\npart2 += `_IDN-StockNews v0.1.0_`;\n\n// ── 4096-char guard ──────────────────────────────────────\n// Try full message first. If over limit, send as two messages.\n\nconst fullMsg = part1 + '\\n' + part2;\nconst results = [];\n\nif (fullMsg.length <= MAX_CHARS) {\n  results.push({\n    json: {\n      text:           fullMsg,\n      parse_mode:     'Markdown',\n      disable_web_page_preview: true,\n      article_count:  items.length,\n      idn_count:      idnItems.length,\n      intl_count:     intlItems.length,\n      edition:        edition(now),\n      generated_at:   now.toISOString(),\n      split:          false,\n    }\n  });\n} else {\n  const footer = `\\n${SEP}\\n_IDN-StockNews v0.1.0_`;\n  results.push(\n    {\n      json: {\n        text:       part1.trimEnd() + footer,\n        parse_mode: 'Markdown',\n        disable_web_page_preview: true,\n        split: true, part: 1,\n      }\n    },\n    {\n      json: {\n        text:       part2,\n        parse_mode: 'Markdown',\n        disable_web_page_preview: true,\n        split: true, part: 2,\n      }\n    }\n  );\n}\n\nreturn results;"
       }
     },
     {
@@ -146,7 +182,10 @@
       "name": "Send to Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [2050, 500],
+      "position": [
+        2050,
+        500
+      ],
       "parameters": {
         "operation": "sendMessage",
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
@@ -162,52 +201,164 @@
     "Manual Trigger": {
       "main": [
         [
-          { "node": "Fetch Kontan", "type": "main", "index": 0 },
-          { "node": "Fetch Bisnis", "type": "main", "index": 0 },
-          { "node": "Fetch Detik", "type": "main", "index": 0 },
-          { "node": "Fetch Reuters", "type": "main", "index": 0 }
+          {
+            "node": "Fetch Kontan",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Bisnis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Detik",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Reuters",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Schedule Trigger": {
       "main": [
         [
-          { "node": "Fetch Kontan", "type": "main", "index": 0 },
-          { "node": "Fetch Bisnis", "type": "main", "index": 0 },
-          { "node": "Fetch Detik", "type": "main", "index": 0 },
-          { "node": "Fetch Reuters", "type": "main", "index": 0 }
+          {
+            "node": "Fetch Kontan",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Bisnis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Detik",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Reuters",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Fetch Kontan": {
-      "main": [[ { "node": "Merge Group A", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Merge Group A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Bisnis": {
-      "main": [[ { "node": "Merge Group A", "type": "main", "index": 1 } ]]
+      "main": [
+        [
+          {
+            "node": "Merge Group A",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     },
     "Fetch Detik": {
-      "main": [[ { "node": "Merge Group B", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Merge Group B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Reuters": {
-      "main": [[ { "node": "Merge Group B", "type": "main", "index": 1 } ]]
+      "main": [
+        [
+          {
+            "node": "Merge Group B",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     },
     "Merge Group A": {
-      "main": [[ { "node": "Merge All Feeds", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Merge All Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Merge Group B": {
-      "main": [[ { "node": "Merge All Feeds", "type": "main", "index": 1 } ]]
+      "main": [
+        [
+          {
+            "node": "Merge All Feeds",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     },
     "Merge All Feeds": {
-      "main": [[ { "node": "Deduplicate & Filter", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Deduplicate & Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Deduplicate & Filter": {
-      "main": [[ { "node": "Score & Rank", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Score & Rank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Score & Rank": {
-      "main": [[ { "node": "Format Telegram Message", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Format Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Telegram Message": {
-      "main": [[ { "node": "Send to Telegram", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
