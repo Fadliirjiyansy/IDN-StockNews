@@ -23,10 +23,11 @@ SUSPENSION_KEYWORDS = [
     "suspend",
     "penghentian sementara",
     "penghentian perdagangan",
-    "uma",
     "unusual market activity",
     "trading halt",
     "halt perdagangan",
+    # NOTE: 'uma' (UMA acronym) omitted here — too short, matches 'pengumuman'
+    # (Indonesian for 'announcement'). Use full phrase in title filter below.
 ]
 
 
@@ -43,7 +44,8 @@ class IDXSuspensionsScraper(BaseScraper):
         events = []
         seen_urls: set = set()
 
-        for keyword in SUSPENSION_KEYWORDS:
+        # Use 'UMA' as IDX API search keyword (server-side search, safe)
+        for keyword in SUSPENSION_KEYWORDS + ["uma"]:
             batch = self._query_suspensions(keyword)
             for event in batch:
                 # In-memory dedup by URL before passing to pipeline
@@ -99,9 +101,16 @@ class IDXSuspensionsScraper(BaseScraper):
         if not title:
             return None
 
-        # Filter: only keep records that actually contain suspension keywords
+        # Filter: only keep records that actually contain suspension-related content
+        # Use word-boundary-safe checks — avoid 'uma' alone matching 'pengumuman'
         title_lower = str(title).lower()
-        if not any(kw in title_lower for kw in SUSPENSION_KEYWORDS):
+        is_suspension = (
+            any(kw in title_lower for kw in SUSPENSION_KEYWORDS)
+            or " uma" in title_lower          # space-prefixed to avoid 'pengumuman'
+            or "(uma)" in title_lower          # bracketed form
+            or title_lower.startswith("uma ")  # leading
+        )
+        if not is_suspension:
             return None
 
         if url and not str(url).startswith("http"):
@@ -131,8 +140,10 @@ class IDXSuspensionsScraper(BaseScraper):
             reason = parts[-1].strip()
             if reason:
                 return reason
-        if "uma" in title.lower() or "unusual" in title.lower():
+        title_lower = title.lower()
+        # Use full phrase or bracketed form — not bare 'uma' to avoid 'pengumuman'
+        if "unusual market activity" in title_lower or "(uma)" in title_lower:
             return "Unusual Market Activity (UMA)"
-        if "suspensi" in title.lower() or "suspend" in title.lower():
+        if "suspensi" in title_lower or "suspend" in title_lower:
             return "Trading Suspension"
         return "N/A"

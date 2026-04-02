@@ -63,7 +63,9 @@ CLASSIFICATION_RULES: List[tuple] = [
     # Suspension
     ("SUSPENSION", [
         "suspend", "suspensi", "penghentian perdagangan", "trading halt",
-        "dihentikan sementara", "unusual market activity", "uma",
+        "dihentikan sementara", "unusual market activity",
+        "unusual market activity (uma)",  # full phrase only — 'uma' alone is too short
+        "trading suspension",              # and matches 'pengumuman' (Indonesian: announcement)
     ]),
     # EGM (check before AGM — more specific)
     ("EGM", [
@@ -82,8 +84,12 @@ def classify_event(title: str, description: str = "") -> str:
     """
     Classify event type by matching keywords in title + description.
     Returns event_type string (e.g. 'IPO', 'DIVIDEND', 'UNKNOWN').
+    Handles None inputs gracefully.
     """
-    search_text = (title + " " + description).lower()
+    # Guard against None inputs (can happen with partial raw records)
+    safe_title = str(title) if title is not None else ""
+    safe_desc = str(description) if description is not None else ""
+    search_text = (safe_title + " " + safe_desc).lower()
 
     for event_type, keywords in CLASSIFICATION_RULES:
         for kw in keywords:
