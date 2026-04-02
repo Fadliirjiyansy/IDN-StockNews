@@ -23,3 +23,14 @@ data/n8n/*
 # Secrets — ignore everything inside, at any depth
 secrets/
 !secrets/.gitkeep
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+
+# Python virtual environments
+.venv/
+venv/
+env/
