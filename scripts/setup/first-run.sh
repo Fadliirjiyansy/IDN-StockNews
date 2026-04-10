@@ -4,8 +4,8 @@ set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-echo "🔧 IDN-StockNews First-Run Setup"
-echo "================================="
+echo "🔧 FinancialReportNews First-Run Setup"
+echo "======================================="
 
 # Check .env exists
 if [ ! -f "$REPO_ROOT/.env" ]; then

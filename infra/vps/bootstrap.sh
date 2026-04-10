@@ -2,7 +2,7 @@
 # VPS bootstrap script — run once on a fresh Ubuntu 22.04 server
 set -e
 
-echo "🚀 Setting up IDN-StockNews VPS..."
+echo "🚀 Setting up FinancialReportNews VPS..."
 
 # Update system
 sudo apt-get update && sudo apt-get upgrade -y

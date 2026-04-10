@@ -4,7 +4,7 @@ set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-echo "🚀 Deploying IDN-StockNews..."
+echo "🚀 Deploying FinancialReportNews..."
 
 # Pull latest images
 docker compose -f "$REPO_ROOT/docker-compose.yml" pull

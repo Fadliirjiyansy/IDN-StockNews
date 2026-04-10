@@ -22,7 +22,7 @@ services:
   # ---------------------------------------------------------------------------
   postgres:
     image: postgres:15-alpine
-    container_name: idn-stocknews-postgres
+    container_name: financialreportnews-postgres
     restart: unless-stopped
 
     environment:
@@ -53,7 +53,7 @@ services:
   # ---------------------------------------------------------------------------
   n8n:
     image: n8nio/n8n:latest
-    container_name: idn-stocknews-n8n
+    container_name: financialreportnews-n8n
     restart: unless-stopped
 
     # Wait for Postgres to be healthy before starting
@@ -85,6 +85,13 @@ services:
       GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
       TZ: ${GENERIC_TIMEZONE}
 
+      # ---- Telegram (accessible as $env vars inside workflows) ---------------
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+
+      # Allow workflows to read env vars via $env.VARIABLE_NAME expressions
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+
       # ---- Optional: Basic Auth (uncomment to enable) -------------------------
       # N8N_BASIC_AUTH_ACTIVE: "true"
       # N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
@@ -98,6 +105,48 @@ services:
       # Expose n8n UI. In production, keep this behind a reverse proxy.
       - "${N8N_PORT}:${N8N_PORT}"
 
+    # Health check so n8n-init waits until the editor is truly ready
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${N8N_PORT}/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - n8n-network
+
+  # ---------------------------------------------------------------------------
+  # n8n-init — one-shot credential importer; runs after n8n is healthy
+  # ---------------------------------------------------------------------------
+  n8n-init:
+    image: n8nio/n8n:latest
+    container_name: financialreportnews-n8n-init
+    restart: "no"
+
+    depends_on:
+      n8n:
+        condition: service_healthy
+
+    environment:
+      # Database — same as n8n so import can read/write credentials
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+
+      # Credentials to import
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      N8N_OWNER_USER_ID: ${N8N_OWNER_USER_ID}
+
+    volumes:
+      - ./scripts/setup/import-credentials.sh:/import-credentials.sh:ro
+
+    entrypoint: ["/bin/sh", "/import-credentials.sh"]
+
     networks:
       - n8n-network
 
@@ -110,7 +159,7 @@ volumes:
 
 networks:
   n8n-network:
-    name: idn-stocknews-n8n-network
+    name: financialreportnews-n8n-network
     driver: bridge
 
 # =============================================================================
@@ -123,7 +172,7 @@ networks:
 #
 # 2. Backups
 #    Schedule pg_dump via cron:
-#      docker exec idn-stocknews-postgres pg_dump -U n8n n8n > backup.sql
+#      docker exec financialreportnews-postgres pg_dump -U n8n n8n > backup.sql
 #
 # 3. Resource limits
 #    Add deploy.resources.limits to each service for memory/CPU caps.
