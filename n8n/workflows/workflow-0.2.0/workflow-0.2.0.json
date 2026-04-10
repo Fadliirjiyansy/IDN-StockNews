@@ -1,266 +1,476 @@
 {
-  "name": "IDX Event Tracker — v0.2.0",
+  "name": "Market Briefing - Full Pipeline v0.2.0",
   "nodes": [
     {
+      "id": "trigger-1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        400
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        200
+      ],
       "parameters": {
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 6
+              "triggerAtHour": 8,
+              "triggerAtMinute": 55
+            },
+            {
+              "triggerAtHour": 16,
+              "triggerAtMinute": 5
             }
           ]
         }
-      },
-      "id": "schedule-trigger",
-      "name": "Every 6 Hours",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.1,
-      "position": [240, 300]
+      }
     },
     {
+      "id": "rss-kontan",
+      "name": "Fetch Kontan",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        500,
+        200
+      ],
+      "onError": "continueRegularOutput",
       "parameters": {
-        "method": "POST",
-        "url": "http://event-tracker:5055/run",
-        "options": {
-          "timeout": 120000,
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
-      },
-      "id": "trigger-pipeline-run",
-      "name": "Trigger Scrape Pipeline",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [460, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "// ── Check pipeline run result ─────────────────────────────\nconst result = $input.first().json;\n\nif (result.status !== 'ok') {\n  throw new Error(`Pipeline run failed: ${result.message || JSON.stringify(result)}`);\n}\n\nreturn [{\n  json: {\n    run_ok:   true,\n    inserted: result.inserted,\n    skipped:  result.skipped,\n    errors:   result.errors,\n    run_at:   result.run_at,\n  }\n}];"
-      },
-      "id": "check-run-result",
-      "name": "Check Run Result",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [680, 300]
-    },
-    {
-      "parameters": {
-        "url": "http://event-tracker:5055/events/new",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "hours",
-              "value": "7"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 30000,
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
-      },
-      "id": "fetch-new-events",
-      "name": "Fetch New Events",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [900, 300]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "has-new-events",
-              "leftValue": "={{ $json.count }}",
-              "rightValue": 0,
-              "operator": {
-                "type": "number",
-                "operation": "gt"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
+        "url": "https://investasi.kontan.co.id/rss/berita/pasar-modal",
         "options": {}
-      },
-      "id": "if-has-new-events",
-      "name": "Has New Events?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1120, 300]
+      }
     },
     {
+      "id": "rss-bisnis",
+      "name": "Fetch Bisnis",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        500,
+        400
+      ],
+      "onError": "continueRegularOutput",
       "parameters": {
-        "jsCode": "// ── Split event list into individual items ─────────────────\nconst data = $input.first().json;\nconst events = data.events || [];\n\nif (events.length === 0) {\n  return [];\n}\n\n// Return each event as a separate item for downstream processing\nreturn events.map(event => ({ json: event }));"
-      },
-      "id": "split-events",
-      "name": "Split Events",
+        "url": "https://market.bisnis.com/rss",
+        "options": {}
+      }
+    },
+    {
+      "id": "rss-detik",
+      "name": "Fetch Detik",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        500,
+        600
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "https://finance.detik.com/rss",
+        "options": {}
+      }
+    },
+    {
+      "id": "rss-reuters",
+      "name": "Fetch Reuters",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        500,
+        800
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "https://feeds.reuters.com/reuters/INbusinessNews",
+        "options": {}
+      }
+    },
+    {
+      "id": "merge-a",
+      "name": "Merge Group A",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        750,
+        300
+      ],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "merge-b",
+      "name": "Merge Group B",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        750,
+        700
+      ],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "merge-all",
+      "name": "Merge All Feeds",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1000,
+        500
+      ],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "dedup-filter",
+      "name": "Deduplicate & Filter",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 200]
+      "position": [
+        1250,
+        500
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Deduplicate by link/URL, filter to last 24 hours, tag feedSource.\n// feedSource is injected upstream by Set nodes (Tag Kontan, Tag Bisnis, etc.)\nconst items = $input.all();\nconst seen = new Set();\nconst now = new Date();\nconst cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);\n\nconst unique = [];\nfor (const item of items) {\n  const link = item.json.link || item.json.guid || '';\n  if (!link || seen.has(link)) continue;\n  seen.add(link);\n\n  const pubDate = item.json.pubDate || item.json.isoDate || '';\n  if (pubDate) {\n    const d = new Date(pubDate);\n    if (d < cutoff) continue;\n  }\n\n  // feedSource is set by the Tag nodes upstream; fall back to 'unknown'\n  const feedSource = item.json.feedSource || 'unknown';\n\n  unique.push({\n    json: {\n      title:    item.json.title || 'No title',\n      link:     link,\n      pubDate:  pubDate,\n      content:  item.json.contentSnippet || item.json.content || item.json.description || '',\n      source:   feedSource,\n      category: item.json.categories ? item.json.categories[0] : 'general',\n      feedSource: feedSource,\n    }\n  });\n}\n\nif (unique.length === 0) {\n  return [{ json: { title: 'No recent news found', link: '', pubDate: new Date().toISOString(), content: '', source: 'system', category: 'none' } }];\n}\n\nreturn unique;\n"
+      }
     },
     {
-      "parameters": {
-        "jsCode": "// ── Format Telegram alert per event type ──────────────────\n//\n// Alert templates:\n//   IPO          → 📈 Upcoming IPO\n//   DIVIDEND     → 💰 Dividend\n//   RIGHTS_ISSUE → 📋 Rights Issue\n//   STOCK_SPLIT  → ✂️ Stock Split\n//   BONUS_SHARES → 🎁 Bonus Shares\n//   BUYBACK      → 🔄 Buyback\n//   SUSPENSION   → ⚠️ Trading Suspension\n//   AGM          → 🏛 AGM (RUPS Tahunan)\n//   EGM          → 🏛 EGM (RUPS Luar Biasa)\n//   DELISTING    → 🚫 Delisting\n\nconst CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-100123456789';\n\nfunction fmtDate(d) {\n  if (!d) return 'TBA';\n  const dt = new Date(d);\n  if (isNaN(dt)) return d;\n  return dt.toLocaleDateString('id-ID', {\n    day: '2-digit', month: 'short', year: 'numeric'\n  });\n}\n\nfunction buildMessage(ev) {\n  const ticker  = ev.ticker  || '-';\n  const company = ev.company || ev.ticker || 'N/A';\n\n  switch (ev.event_type) {\n    case 'IPO':\n      return [\n        `📈 *Upcoming IPO*`,\n        `Company      : ${company}`,\n        `Ticker       : ${ticker}`,\n        `Book-Build   : ${fmtDate(ev.book_build_start)} – ${fmtDate(ev.book_build_end)}`,\n        `Listing Date : ${fmtDate(ev.listing_date)}`,\n        ev.url ? `\\n[IDX/e-IPO](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'DIVIDEND':\n      return [\n        `💰 *Dividend Announcement*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Ex-Date     : ${fmtDate(ev.ex_date)}`,\n        `Record Date : ${fmtDate(ev.record_date)}`,\n        ev.description ? `Detail      : ${ev.description}` : '',\n        ev.url ? `\\n[Detail](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'RIGHTS_ISSUE':\n      return [\n        `📋 *Rights Issue (HMETD)*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Ex-Date     : ${fmtDate(ev.ex_date)}`,\n        `Record Date : ${fmtDate(ev.record_date)}`,\n        ev.description ? `Detail      : ${ev.description}` : '',\n        ev.url ? `\\n[Detail](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'STOCK_SPLIT':\n      return [\n        `✂️ *Stock Split*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Efektif     : ${fmtDate(ev.event_date)}`,\n        ev.description ? `Detail      : ${ev.description}` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'BONUS_SHARES':\n      return [\n        `🎁 *Bonus Shares*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n        ev.description ? `Detail      : ${ev.description}` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'BUYBACK':\n      return [\n        `🔄 *Share Buyback*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n      ].filter(Boolean).join('\\n');\n\n    case 'SUSPENSION':\n      return [\n        `⚠️ *Trading Suspension*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n        `Alasan      : ${ev.description || 'Lihat pengumuman IDX'}`,\n        ev.url ? `\\n[Pengumuman](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'AGM':\n      return [\n        `🏛 *RUPS Tahunan (AGM)*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n        ev.url ? `\\n[Pengumuman](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'EGM':\n      return [\n        `🏛 *RUPS Luar Biasa (EGM)*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n        ev.url ? `\\n[Pengumuman](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    case 'DELISTING':\n      return [\n        `🚫 *Delisting Notice*`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n        ev.url ? `\\n[Detail](${ev.url})` : '',\n      ].filter(Boolean).join('\\n');\n\n    default:\n      return [\n        `📌 *Market Event*`,\n        `Type        : ${ev.event_type}`,\n        `Ticker      : ${ticker}`,\n        `Company     : ${company}`,\n        `Tanggal     : ${fmtDate(ev.event_date)}`,\n      ].join('\\n');\n  }\n}\n\nconst event = $input.first().json;\nconst text  = buildMessage(event);\n\nreturn [{\n  json: {\n    chat_id:                  CHAT_ID,\n    text:                     text,\n    parse_mode:               'Markdown',\n    disable_web_page_preview: true,\n    event_type:               event.event_type,\n    ticker:                   event.ticker,\n  }\n}];"
-      },
-      "id": "format-alert",
-      "name": "Format Alert Message",
+      "id": "rank-sort",
+      "name": "Score & Rank",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 200]
+      "position": [
+        1500,
+        500
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ============================================================\n// SCORING MODULE v0.1.0\n// Signals: Recency (decay) + Ticker (NER) + Keyword (lexicon)\n// ============================================================\n\n// \u2500\u2500 Configuration \u2500\u2500\nconst CONFIG = {\n  recency: { halfLife: 6, maxScore: 30, fallback: 15 },\n  ticker:  { maxScore: 35 },\n  keyword: { maxScore: 15 },\n  topN: 10\n};\n\nconst DECAY_LAMBDA = Math.LN2 / CONFIG.recency.halfLife;\n\n// \u2500\u2500 Watchlist: Tiered LQ45 tickers \u2500\u2500\n// Heuristic engineering weights for market importance.\nconst WATCHLIST = {\n  BBCA:15, BBRI:15, BMRI:15, TLKM:15, ASII:15,\n  BBNI:15, GOTO:15, AMMN:15, BREN:15, BYAN:15,\n  ADRO:10, PTBA:10, ANTM:10, MDKA:10, INDF:10,\n  ICBP:10, UNVR:10, KLBF:10, SMGR:10, INTP:10, BRIS:10,\n  EXCL:5, MTEL:5, BUKA:5\n};\n\n// Single compiled regex \u2014 O(n) single-pass scan\nconst TICKER_PATTERN = new RegExp(\n  '\\\\b(' + Object.keys(WATCHLIST).join('|') + ')\\\\b', 'gi'\n);\n\n// \u2500\u2500 Keyword Tiers: Financial Event Lexicon \u2500\u2500\n// Heuristic keyword lexicon for market-impacting events.\n// Returns HIGHEST matching tier only (no summing across tiers).\nconst KEYWORD_TIERS = [\n  {\n    name: 'high', pts: 15,\n    words: [\n      'dividen','dividend','stock split','pemecahan saham',\n      'merger','akuisisi','takeover','ipo','rights issue','buyback',\n      'default','gagal bayar','bangkrut','pailit',\n      'suspensi','delisting','bi rate','suku bunga'\n    ]\n  },\n  {\n    name: 'medium', pts: 8,\n    words: [\n      'laba bersih','pendapatan','laporan keuangan','earnings',\n      'profit','revenue','rups','dividend payout','eps','roe'\n    ]\n  },\n  {\n    name: 'low', pts: 4,\n    words: [\n      'rekomendasi','target harga','price target',\n      'upgrade','downgrade','outlook','analis'\n    ]\n  }\n];\n\n// \u2500\u2500 Signal 1: Recency Score \u2500\u2500\n// score = maxScore \u00d7 e^(\u2212\u03bb \u00d7 \u0394h), \u03bb = ln(2)/halfLife\nfunction recencyScore(pubDate, now) {\n  const { maxScore, fallback } = CONFIG.recency;\n  if (!pubDate) return fallback;\n  const pubMs = Date.parse(pubDate);\n  if (Number.isNaN(pubMs)) return fallback;\n  const hoursAgo = (now.getTime() - pubMs) / 3600000;\n  const deltaH = Math.max(0, hoursAgo);\n  return Math.round(maxScore * Math.exp(-DECAY_LAMBDA * deltaH) * 100) / 100;\n}\n\n// \u2500\u2500 Signal 2: Ticker Match \u2500\u2500\nfunction tickerMatch(title, content) {\n  const text = ((title || '') + ' ' + (content || '')).toUpperCase();\n  TICKER_PATTERN.lastIndex = 0;\n  const found = new Set();\n  let m;\n  while ((m = TICKER_PATTERN.exec(text)) !== null) found.add(m[1]);\n  const tickers = Array.from(found);\n  let raw = 0;\n  for (const t of tickers) raw += WATCHLIST[t] || 0;\n  return { score: Math.min(raw, CONFIG.ticker.maxScore), tickers };\n}\n\n// \u2500\u2500 Signal 3: Keyword Boost \u2500\u2500\n// Heuristic financial event lexicon \u2014 NOT sentiment analysis.\n// Returns highest matching tier score only.\nfunction keywordScore(title, content) {\n  const text = ((title || '') + ' ' + (content || '')).toLowerCase();\n  for (const tier of KEYWORD_TIERS) {\n    for (const word of tier.words) {\n      if (text.indexOf(word) !== -1) {\n        return { score: tier.pts, keyword: word };\n      }\n    }\n  }\n  return { score: 0, keyword: null };\n}\n\n// \u2500\u2500 Final Score \u2500\u2500\n// finalScore = recencyScore + tickerScore + keywordScore (max \u2248 80)\nfunction finalScore(r, t, k) {\n  return Math.round((r + t + k) * 100) / 100;\n}\n\n// \u2500\u2500 Main \u2500\u2500\nconst items = $input.all();\nconst now = new Date();\n\nconst scored = items.map(item => {\n  const a = item.json;\n  const rScore  = recencyScore(a.pubDate, now);\n  const tResult = tickerMatch(a.title, a.content);\n  const kResult = keywordScore(a.title, a.content);\n  const fScore  = finalScore(rScore, tResult.score, kResult.score);\n  return {\n    json: {\n      ...a,\n      recencyScore: rScore,\n      tickerScore:  tResult.score,\n      tickers:      tResult.tickers,\n      keywordScore: kResult.score,\n      matchedKeyword: kResult.keyword,\n      finalScore:   fScore\n    }\n  };\n});\n\nscored.sort((a, b) => b.json.finalScore - a.json.finalScore);\nreturn scored.slice(0, CONFIG.topN);"
+      }
     },
     {
+      "id": "format-msg",
+      "name": "Format Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1750,
+        500
+      ],
       "parameters": {
-        "chatId": "={{ $json.chat_id }}",
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ============================================================\n// FORMAT TELEGRAM MESSAGE - v0.2.0\n// Clean header + ranked news (IDN <=5, INTL <=3).\n// Telegram MarkdownV1-safe. 4096-char guard.\n// ============================================================\n\nconst IDN_SOURCES = new Set([\n  'kontan-market', 'bisnis-market', 'detik-finance'\n]);\n\nconst SOURCE_LABEL = {\n  'kontan-market':     'Kontan',\n  'bisnis-market':     'Bisnis.com',\n  'detik-finance':     'Detik Finance',\n  'reuters-indonesia': 'Reuters',\n  'bloomberg':         'Bloomberg',\n};\n\nconst SEP       = '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500';\nconst MAX_CHARS = 4096;\nconst MAX_IDN   = 5;\nconst MAX_INTL  = 3;\n\n// -- Helpers --\n\nfunction wibNow(date) {\n  return new Date(date.getTime() + 7 * 3600000);\n}\n\nfunction dateStr(date) {\n  const d = wibNow(date);\n  const months = ['January','February','March','April','May','June',\n                  'July','August','September','October','November','December'];\n  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;\n}\n\nfunction timeStr(date) {\n  const d = wibNow(date);\n  return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')} WIB`;\n}\n\nfunction edition(date) {\n  return wibNow(date).getUTCHours() < 12 ? 'Morning Edition' : 'Afternoon Edition';\n}\n\n// Escape Telegram MarkdownV1 special chars\nfunction escMd(str) {\n  return (str || '').replace(/([_*`\\[\\]])/g, '\\\\$1');\n}\n\nfunction articleTimeStr(pubDate) {\n  if (!pubDate) return '';\n  const d = new Date(pubDate);\n  if (isNaN(d)) return '';\n  return timeStr(d);\n}\n\nfunction srcLabel(src) {\n  return escMd(SOURCE_LABEL[src] || src || 'Unknown');\n}\n\n// -- Inputs --\n\nconst items = $input.all();\nconst now   = new Date();\n\nconst idnItems  = items.filter(i => IDN_SOURCES.has(i.json.source)).slice(0, MAX_IDN);\nconst intlItems = items.filter(i => !IDN_SOURCES.has(i.json.source)).slice(0, MAX_INTL);\n\n// -- Header --\n\nlet part1 = '';\npart1 += `*Financial Report News - ${edition(now)}*\\n`;\npart1 += `${dateStr(now)} | ${timeStr(now)}\\n`;\npart1 += `${SEP}\\n`;\n\n// -- News sections --\n\nlet part2 = '';\n\npart2 += `*IDN NEWS*\\n`;\nif (idnItems.length === 0) {\n  part2 += `_Tidak ada berita IDN terbaru._\\n`;\n} else {\n  idnItems.forEach((item, i) => {\n    const a   = item.json;\n    const t   = escMd(articleTimeStr(a.pubDate));\n    const src = srcLabel(a.source);\n    part2 += `${i + 1}. [${escMd(a.title)}](${a.link})\\n`;\n    part2 += `   ${src}${t ? ' | ' + t : ''}\\n`;\n  });\n}\n\npart2 += `\\n*INTERNATIONAL NEWS*\\n`;\nif (intlItems.length === 0) {\n  part2 += `_No international news available._\\n`;\n} else {\n  intlItems.forEach((item, i) => {\n    const a   = item.json;\n    const t   = escMd(articleTimeStr(a.pubDate));\n    const src = srcLabel(a.source);\n    part2 += `${i + 1}. [${escMd(a.title)}](${a.link})\\n`;\n    part2 += `   ${src}${t ? ' | ' + t : ''}\\n`;\n  });\n}\n\npart2 += `\\n${SEP}\\n`;\npart2 += `_FinancialReportNews v0.2.0_`;\n\n// -- 4096-char guard --\n\nconst fullMsg = part1 + '\\n' + part2;\nconst results = [];\n\nif (fullMsg.length <= MAX_CHARS) {\n  results.push({\n    json: {\n      text:           fullMsg,\n      parse_mode:     'Markdown',\n      disable_web_page_preview: true,\n      article_count:  items.length,\n      idn_count:      idnItems.length,\n      intl_count:     intlItems.length,\n      edition:        edition(now),\n      generated_at:   now.toISOString(),\n      split:          false,\n    }\n  });\n} else {\n  const footer = `\\n${SEP}\\n_FinancialReportNews v0.2.0_`;\n  results.push(\n    {\n      json: {\n        text:       part1.trimEnd() + footer,\n        parse_mode: 'Markdown',\n        disable_web_page_preview: true,\n        split: true, part: 1,\n      }\n    },\n    {\n      json: {\n        text:       part2,\n        parse_mode: 'Markdown',\n        disable_web_page_preview: true,\n        split: true, part: 2,\n      }\n    }\n  );\n}\n\nreturn results;\n"
+      }
+    },
+    {
+      "id": "telegram-send",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2050,
+        500
+      ],
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
         "text": "={{ $json.text }}",
         "additionalFields": {
           "parse_mode": "Markdown",
           "disable_web_page_preview": true
         }
       },
-      "id": "send-telegram-alert",
-      "name": "Send Telegram Alert",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.1,
-      "position": [1780, 200],
       "credentials": {
         "telegramApi": {
-          "id": "telegram-bot-cred",
-          "name": "Telegram Bot"
+          "id": "frn-telegram-bot",
+          "name": "Telegram Bot - FinancialReportNews"
         }
       }
     },
     {
-      "parameters": {},
-      "id": "no-new-events",
-      "name": "No New Events",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [1340, 420]
+      "id": "set-kontan",
+      "name": "Tag Kontan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "item.json.feedSource = \"kontan-market\";\nreturn item;"
+      }
+    },
+    {
+      "id": "set-bisnis",
+      "name": "Tag Bisnis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "item.json.feedSource = \"bisnis-market\";\nreturn item;"
+      }
+    },
+    {
+      "id": "set-detik",
+      "name": "Tag Detik",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        600
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "item.json.feedSource = \"detik-finance\";\nreturn item;"
+      }
+    },
+    {
+      "id": "set-reuters",
+      "name": "Tag Reuters",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        800
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "item.json.feedSource = \"reuters-indonesia\";\nreturn item;"
+      }
     }
   ],
   "connections": {
-    "Every 6 Hours": {
+    "Manual Trigger": {
       "main": [
         [
           {
-            "node": "Trigger Scrape Pipeline",
+            "node": "Fetch Kontan",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Bisnis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Detik",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Reuters",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Trigger Scrape Pipeline": {
+    "Schedule Trigger": {
       "main": [
         [
           {
-            "node": "Check Run Result",
+            "node": "Fetch Kontan",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Bisnis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Detik",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Reuters",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Run Result": {
+    "Fetch Kontan": {
       "main": [
         [
           {
-            "node": "Fetch New Events",
+            "node": "Tag Kontan",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch New Events": {
+    "Fetch Bisnis": {
       "main": [
         [
           {
-            "node": "Has New Events?",
+            "node": "Tag Bisnis",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Has New Events?": {
+    "Fetch Detik": {
       "main": [
         [
           {
-            "node": "Split Events",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "No New Events",
+            "node": "Tag Detik",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Split Events": {
+    "Fetch Reuters": {
       "main": [
         [
           {
-            "node": "Format Alert Message",
+            "node": "Tag Reuters",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Format Alert Message": {
+    "Merge Group A": {
       "main": [
         [
           {
-            "node": "Send Telegram Alert",
+            "node": "Merge All Feeds",
             "type": "main",
             "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Group B": {
+      "main": [
+        [
+          {
+            "node": "Merge All Feeds",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge All Feeds": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate & Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate & Filter": {
+      "main": [
+        [
+          {
+            "node": "Score & Rank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score & Rank": {
+      "main": [
+        [
+          {
+            "node": "Format Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Kontan": {
+      "main": [
+        [
+          {
+            "node": "Merge Group A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Bisnis": {
+      "main": [
+        [
+          {
+            "node": "Merge Group A",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Tag Detik": {
+      "main": [
+        [
+          {
+            "node": "Merge Group B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Reuters": {
+      "main": [
+        [
+          {
+            "node": "Merge Group B",
+            "type": "main",
+            "index": 1
           }
         ]
       ]
     }
   },
-  "active": false,
   "settings": {
     "executionOrder": "v1",
     "saveManualExecutions": true,
-    "callerPolicy": "workflowsFromSameOwner",
-    "errorWorkflow": ""
+    "timezone": "Asia/Jakarta"
   },
-  "staticData": null,
-  "tags": [
-    {
-      "name": "market-briefing"
-    },
-    {
-      "name": "event-tracker"
-    }
-  ],
-  "triggerCount": 0,
-  "updatedAt": "2026-04-02T10:00:00.000Z",
-  "id": "workflow-event-tracker-020",
-  "meta": {
-    "instanceId": "market-briefing-local",
-    "templateId": "idx-event-tracker-v020"
-  },
-  "versionId": "0.2.0"
+  "id": "frn-market-briefing-v020"
 }
