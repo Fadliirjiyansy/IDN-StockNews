@@ -111,6 +111,7 @@ python3 tests/integration/test_pipeline.py
 ## 📚 Docs
 
 - [Architecture Overview](docs/architecture/overview.md)
+- [Event Tracker Database Tables](docs/event-tracker/database-tables.md)
 - [Pipeline Workflow Guide](docs/workflows/market-briefing-pipeline.md)
 - [Telegram Bot Setup](docs/api/telegram-setup.md)
 - [VPS Deployment](docs/deployment/vps-deployment.md)
